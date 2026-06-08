@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: rml-bff-BFF_PROJECT
+
+server:
+  port: ${SERVER_PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET:rml-sovarais-auth-secret-key-must-be-at-least-32-chars}
+
+# URLs dos SRV services — via K8s ClusterIP (service name do K8s)
+clients:
+  srv-BFF_PROJECT:
+    url: ${SRV_BFF_PROJECT_URL:http://rml-srv-BFF_PROJECT}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
