@@ -128,9 +128,10 @@
     </dependencyManagement>
 
     <repositories>
+        <!-- GitHub Packages — rml-common (usado pelo CI/CD e dev com PAT) -->
         <repository>
-            <id>rml-nexus-group</id>
-            <url>${nexus.url}/repository/rml-group/</url>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/org-rml/rml-common</url>
             <releases><enabled>true</enabled></releases>
             <snapshots><enabled>true</enabled></snapshots>
         </repository>
