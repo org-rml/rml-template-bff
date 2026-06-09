@@ -78,6 +78,9 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            GITHUB_ACTOR=${{ github.actor }}
+            PACKAGES_TOKEN=${{ secrets.PACKAGES_TOKEN }}
 
   deploy-staging:
     needs: docker
