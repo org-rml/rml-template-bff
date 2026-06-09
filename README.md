@@ -11,13 +11,14 @@ Marcar como **Template Repository** no GitHub para uso em novos projetos.
 |------|-------|
 | **Tipo** | BFF (Backend for Frontend) |
 | **Padrão** | MVC — Controller → Service → Feign Client |
-| **Porta** | `8080` |
+| **Porta** | `8081` (BFF) / SRV em `8080` |
 | **Java** | 21 (Eclipse Temurin) |
-| **Framework** | Spring Boot 3.4.5 + Spring Cloud OpenFeign |
+| **Framework** | Spring Boot 3.4.5 + Spring Cloud OpenFeign + OkHttp |
+| **Segurança** | Sem Spring Security — autenticação via Gateway/infraestrutura |
 | **Imagem Docker** | `ghcr.io/org-rml/rml-bff-br.com.{projeto}:latest` |
 
-> O BFF **não tem banco de dados próprio**. Ele recebe requisições do FED (Angular),
-> valida o JWT emitido pelo `rml-srv-auth`, e delega para os SRVs via Feign Client.
+> O BFF **não tem banco de dados próprio**. Recebe requisições do FED (Angular/React),
+> e delega para os SRVs via Feign Client. A autenticação é responsabilidade do Gateway.
 
 ---
 
@@ -26,32 +27,39 @@ Marcar como **Template Repository** no GitHub para uso em novos projetos.
 ```
 src/main/java/br/com/rml/BFF_PROJECT/
 │
-├── BffApplication.java          ← @SpringBootApplication + @EnableFeignClients
+├── Application.java                         ← @SpringBootApplication + @EnableFeignClients
+│
+├── adapter/
+│   └── exception/
+│       └── handler/
+│           ├── RestExceptionHandler.java    ← @ControllerAdvice, extends ResponseEntityExceptionHandler
+│           └── response/
+│               └── ApiErroResponse.java     ← payload de erro padronizado
 │
 ├── controller/
-│   └── SampleController.java    ← REST endpoints expostos ao FED
+│   ├── ProductController.java               ← REST endpoints (sem annotations Swagger)
+│   └── SwaggerProductController.java        ← interface com @Operation/@ApiResponse
 │
 ├── service/
-│   └── SampleService.java       ← orquestra chamadas aos Feign clients
+│   └── ProductService.java                  ← orquestra chamadas aos Feign clients
 │
 ├── client/
-│   ├── SampleClient.java        ← @FeignClient → chama o SRV correspondente
+│   ├── ProductClient.java                   ← @FeignClient → chama o SRV correspondente
 │   └── dto/
-│       └── SampleClientResponseDto.java  ← DTO de resposta do SRV
+│       └── ProductClientResponseDto.java    ← record: espelha a resposta do SRV
 │
 ├── dto/
 │   ├── request/
-│   │   └── SampleRequestDto.java         ← extends BaseLongDTO
+│   │   └── ProductRequestDto.java           ← record com validações (@NotBlank, @NotNull)
 │   └── response/
-│       └── SampleResponseDto.java        ← extends BaseLongDTO
+│       └── ProductResponseDto.java          ← record de saída para o FED
 │
 ├── mapper/
-│   └── SampleMapper.java        ← MapStruct: ClientResponseDto → ResponseDto
+│   └── ProductMapper.java                   ← MapStruct estático (INSTANCE = Mappers.getMapper())
 │
 └── config/
-    ├── SecurityConfig.java      ← stateless, valida JWT
-    ├── JwtAuthFilter.java       ← OncePerRequestFilter — valida token do srv-auth
-    └── SpringDocConfig.java     ← Swagger com Bearer auth
+    ├── ForkJoinConfig.java                  ← pool de threads para CompletableFuture paralelo
+    └── SpringDocConfig.java                 ← Swagger/OpenAPI
 ```
 
 ---
@@ -68,9 +76,10 @@ Nome: `rml-bff-{projeto}` → ex: `rml-bff-sovarais`
 |-------------|---------------|---------|
 | `BFF_PROJECT` | nome do projeto | `sovarais` |
 | `rml-bff-BFF_PROJECT` | nome do serviço | `rml-bff-sovarais` |
-| `SampleClient` | nome do client Feign | `AuthClient`, `ClientServiceClient` |
-| `SampleController` | nome do controller | `ClientController` |
-| `SampleService` | nome do service | `ClientService` |
+| `ProductClient` | nome do client Feign | `PedidoClient`, `ClienteClient` |
+| `ProductController` | nome do controller | `PedidoController` |
+| `ProductService` | nome do service | `PedidoService` |
+| `SwaggerProductController` | interface Swagger | `SwaggerPedidoController` |
 
 ### 3. Criar o config repo
 GitHub → **New repository** → **Template: `org-rml/rml-template-srv-config`**  
@@ -81,22 +90,73 @@ Nome: `rml-bff-{projeto}-config` → ex: `rml-bff-sovarais-config`
 ## Fluxo de Dados
 
 ```
-FED (Angular)
-    │ HTTPS + JWT
+FED (Angular/React)
+    │ HTTPS
     ▼
-BFF Controller
+Gateway (autenticação)
+    │
+    ▼
+BFF Controller  (:8081)
     │
     ▼
 BFF Service
-    │ Feign (REST interno K8s)
+    │ Feign + OkHttp (REST interno K8s)
     ▼
-SRV (rml-srv-*-{projeto})
+SRV (rml-srv-*-{projeto})  (:8080)
     │
     ▼
-DB (Postgres)
+DB (Postgres/outro)
 ```
 
-O BFF **valida** o JWT mas **não emite** — quem emite é o `rml-srv-auth`.
+---
+
+## Padrões aplicados
+
+### Controller + Interface Swagger
+O controller implementa uma interface separada que contém apenas as annotations do OpenAPI,
+mantendo o controller limpo:
+
+```java
+// Interface — só Swagger
+@Tag(name = "ProductController")
+public interface SwaggerProductController {
+    @Operation(summary = "Lista todos os produtos")
+    ResponseEntity<List<ProductResponseDto>> findAll();
+}
+
+// Controller — só lógica HTTP
+@RestController
+public class ProductController implements SwaggerProductController {
+    public ResponseEntity<List<ProductResponseDto>> findAll() { ... }
+}
+```
+
+### MapStruct estático
+```java
+@Mapper
+public interface ProductMapper {
+    ProductMapper INSTANCE = Mappers.getMapper(ProductMapper.class);
+}
+
+// Uso no service — sem injeção Spring
+ProductMapper.INSTANCE.toResponse(clientResponse);
+```
+
+### Chamadas paralelas com ForkJoinPool
+Para BFFs que consomem múltiplos SRVs em paralelo:
+```java
+@RequiredArgsConstructor
+public class MeuService {
+    private final ForkJoinPool forkJoinPool;
+
+    public MeuResponseDto buscarTudo() {
+        var a = CompletableFuture.supplyAsync(() -> clienteClient.findAll(), forkJoinPool);
+        var b = CompletableFuture.supplyAsync(() -> pedidoClient.findAll(), forkJoinPool);
+        CompletableFuture.allOf(a, b).join();
+        // ...
+    }
+}
+```
 
 ---
 
@@ -106,19 +166,23 @@ O BFF **valida** o JWT mas **não emite** — quem emite é o `rml-srv-auth`.
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `SERVER_PORT` | `8080` | Porta da aplicação |
-| `JWT_SECRET` | `rml-sovarais-auth-secret-key-must-be-at-least-32-chars` | Mesma chave do srv-auth |
-| `SRV_BFF_PROJECT_URL` | `http://rml-srv-BFF_PROJECT` | URL do SRV (K8s service name) |
+| `SERVER_PORT` | `8081` | Porta do BFF |
+| `SERVER_PARALLELISM` | `200` | Threads do ForkJoinPool |
+| `SRV_PRODUCT_URL` | `http://localhost:8080` | URL do SRV (K8s: `http://rml-srv-{dominio}-{projeto}`) |
 
 ---
 
 ## Executando Localmente
 
 ```bash
+# 1. Sobe o SRV (porta 8080)
+cd ../rml-template-srv && mvn spring-boot:run
+
+# 2. Sobe o BFF (porta 8081)
 mvn clean spring-boot:run -s ~/.m2/settings-personal.xml
 ```
 
-Swagger: `http://localhost:8080/swagger-ui.html`
+Swagger: `http://localhost:8081/swagger-ui.html`
 
 ---
 
@@ -142,7 +206,8 @@ Pipeline `.github/workflows/ci.yml`:
 |-------------|--------|
 | Spring Boot | 3.4.5 |
 | Spring Cloud OpenFeign | 2024.0.1 |
-| rml-common | 1.0.0-SNAPSHOT |
-| jjwt | 0.11.5 |
+| feign-okhttp | (gerenciado pelo BOM) |
+| micrometer-tracing-bridge-otel | (gerenciado pelo BOM) |
+| rml-common-core | 1.0.0-SNAPSHOT |
 | MapStruct | 1.5.5 |
 | Lombok | 1.18.38 |
