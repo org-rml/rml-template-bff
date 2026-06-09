@@ -82,29 +82,8 @@ jobs:
             GITHUB_ACTOR=${{ github.actor }}
             PACKAGES_TOKEN=${{ secrets.PACKAGES_TOKEN }}
 
-  deploy-staging:
-    needs: docker
-    runs-on: ubuntu-latest
-    environment: staging
-    if: github.ref == 'refs/heads/develop'
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          repository: org-rml/rml-bff-BFF_PROJECT-config
-          ref: staging
-          token: ${{ secrets.CONFIG_REPO_TOKEN }}
-
-      - name: Bump values-version.yaml — STAGING
-        run: |
-          TAG=${{ needs.docker.outputs.image_tag }}
-          sed -i "s|tag:.*|tag: \"${TAG}\"|" values-version.yaml
-          git config user.email "ci@org-rml.com"
-          git config user.name "CI Bot"
-          git commit -am "ci(staging): bump image to ${TAG}"
-          git push
-
   deploy-sandbox:
-    needs: deploy-staging
+    needs: docker
     runs-on: ubuntu-latest
     environment: sandbox
     if: github.ref == 'refs/heads/develop'
@@ -115,7 +94,7 @@ jobs:
           ref: sandbox
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
-      - name: Bump values-version.yaml — SANDBOX
+      - name: Bump values-version.yaml — SANDBOX (DEV)
         run: |
           TAG=${{ needs.docker.outputs.image_tag }}
           sed -i "s|tag:.*|tag: \"${TAG}\"|" values-version.yaml
@@ -124,8 +103,29 @@ jobs:
           git commit -am "ci(sandbox): bump image to ${TAG}"
           git push
 
-  deploy-production:
+  deploy-staging:
     needs: deploy-sandbox
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: org-rml/rml-bff-BFF_PROJECT-config
+          ref: staging
+          token: ${{ secrets.CONFIG_REPO_TOKEN }}
+
+      - name: Bump values-version.yaml — STAGING (HOM)
+        run: |
+          TAG=${{ needs.docker.outputs.image_tag }}
+          sed -i "s|tag:.*|tag: \"${TAG}\"|" values-version.yaml
+          git config user.email "ci@org-rml.com"
+          git config user.name "CI Bot"
+          git commit -am "ci(staging): bump image to ${TAG}"
+          git push
+
+  deploy-production:
+    needs: deploy-staging
     runs-on: ubuntu-latest
     environment: production
     if: github.ref == 'refs/heads/main'
@@ -136,7 +136,7 @@ jobs:
           ref: production
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
-      - name: Bump values-version.yaml — PRODUCTION
+      - name: Bump values-version.yaml — PRODUCTION (PRD)
         run: |
           TAG=${{ needs.docker.outputs.image_tag }}
           sed -i "s|tag:.*|tag: \"${TAG}\"|" values-version.yaml
