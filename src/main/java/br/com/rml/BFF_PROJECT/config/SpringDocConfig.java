@@ -10,14 +10,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SpringDocConfig {
 
-    @Bean
-    public OpenAPI openAPI() {
-        return new OpenAPI()
-            .addSecurityItem(new SecurityRequirement().addList("Bearer Auth"))
-            .components(new Components().addSecuritySchemes("Bearer Auth",
-                new SecurityScheme()
-                    .type(SecurityScheme.Type.HTTP)
-                    .scheme("bearer")
-                    .bearerFormat("JWT")));
-    }
+	@Bean
+	public OpenAPI openAPI() {
+		return new OpenAPI().addSecurityItem(new SecurityRequirement().addList("Bearer Auth"))
+				.components(new Components().addSecuritySchemes("Bearer Auth",
+						new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")));
+	}
 }

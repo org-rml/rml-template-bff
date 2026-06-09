@@ -1,0 +1,15 @@
+/target/
+
+# IDE — Eclipse / m2e
+.classpath
+.project
+.settings/
+
+# IDE — IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE — VS Code
+.vscode/
