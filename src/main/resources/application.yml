@@ -9,9 +9,11 @@ jwt:
   secret: ${JWT_SECRET:rml-sovarais-auth-secret-key-must-be-at-least-32-chars}
 
 # URLs dos SRV services — via K8s ClusterIP (service name do K8s)
+# TODO: substituir pelo(s) SRV(s) real(is) que este BFF consome
+# Padrão: SRV_{DOMINIO}_URL → http://rml-srv-{dominio}-{projeto}
 clients:
-  srv-BFF_PROJECT:
-    url: ${SRV_BFF_PROJECT_URL:http://rml-srv-BFF_PROJECT}
+  srv-DOMAIN:
+    url: ${SRV_DOMAIN_URL:http://rml-srv-DOMAIN-PROJECT}
 
 management:
   endpoints:

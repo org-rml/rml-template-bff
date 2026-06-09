@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// Aponta para o SRV correspondente via K8s service name
-@FeignClient(name = "rml-srv-BFF_PROJECT", url = "${clients.srv-BFF_PROJECT.url}")
+// TODO: substituir "DOMAIN" e "DOMAIN-PROJECT" pelo SRV real que este BFF consome
+@FeignClient(name = "rml-srv-DOMAIN-PROJECT", url = "${clients.srv-DOMAIN.url}")
 public interface SampleClient {
 
     @GetMapping("/api/samples")
