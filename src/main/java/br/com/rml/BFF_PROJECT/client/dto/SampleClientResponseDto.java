@@ -1,6 +1,6 @@
 package br.com.rml.BFF_PROJECT.client.dto;
 
-import com.rml.common.dto.base.BaseLongDTO;
+import br.com.rml.common.dto.base.BaseLongDTO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

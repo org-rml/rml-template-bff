@@ -1,6 +1,6 @@
 package br.com.rml.BFF_PROJECT.dto.request;
 
-import com.rml.common.dto.base.BaseLongDTO;
+import br.com.rml.common.dto.base.BaseLongDTO;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
