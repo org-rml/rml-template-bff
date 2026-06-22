@@ -194,9 +194,8 @@ Pipeline `.github/workflows/ci.yml`:
 |-----|---------|------|
 | `build` | push/PR | Maven build |
 | `docker` | push | Build + push GHCR |
-| `deploy-staging` | push develop | Bump `values-version.yaml` branch `staging` |
-| `deploy-sandbox` | após staging + aprovação | Bump branch `sandbox` |
-| `deploy-production` | push main + aprovação | Bump branch `production` |
+| `deploy-homolog` | push homolog | Bump `values-version.yaml` branch `homolog` |
+| `deploy-production` | push main | Bump `values-version.yaml` branch `main` |
 
 ---
 

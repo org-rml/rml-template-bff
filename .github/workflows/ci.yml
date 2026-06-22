@@ -2,9 +2,9 @@ name: CI/CD — rml-bff-BFF_PROJECT
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, homolog ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, homolog ]
 
 env:
   IMAGE: ghcr.io/org-rml/rml-bff-br.com.BFF_PROJECT
@@ -85,50 +85,29 @@ jobs:
           secrets: |
             packages_token=${{ secrets.PACKAGES_TOKEN }}
 
-  deploy-sandbox:
+  deploy-homolog:
     needs: docker
     runs-on: ubuntu-latest
-    environment: sandbox
-    if: github.ref == 'refs/heads/develop'
+    environment: homolog
+    if: github.ref == 'refs/heads/homolog'
     steps:
       - uses: actions/checkout@v5
         with:
           repository: org-rml/rml-bff-BFF_PROJECT-config
-          ref: sandbox
+          ref: homolog
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
-      - name: Bump values-version.yaml — SANDBOX (DEV)
+      - name: Bump values-version.yaml — HOMOLOG
         run: |
           TAG=${{ needs.docker.outputs.image_tag }}
           sed -i "s|tag:.*|tag: \"${TAG}\"|" values-version.yaml
           git config user.email "ci@org-rml.com"
           git config user.name "CI Bot"
-          git commit -am "ci(sandbox): bump image to ${TAG}"
-          git push
-
-  deploy-staging:
-    needs: deploy-sandbox
-    runs-on: ubuntu-latest
-    environment: staging
-    if: github.ref == 'refs/heads/develop'
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          repository: org-rml/rml-bff-BFF_PROJECT-config
-          ref: staging
-          token: ${{ secrets.CONFIG_REPO_TOKEN }}
-
-      - name: Bump values-version.yaml — STAGING (HOM)
-        run: |
-          TAG=${{ needs.docker.outputs.image_tag }}
-          sed -i "s|tag:.*|tag: \"${TAG}\"|" values-version.yaml
-          git config user.email "ci@org-rml.com"
-          git config user.name "CI Bot"
-          git commit -am "ci(staging): bump image to ${TAG}"
+          git commit -am "ci(homolog): bump image to ${TAG}"
           git push
 
   deploy-production:
-    needs: deploy-staging
+    needs: docker
     runs-on: ubuntu-latest
     environment: production
     if: github.ref == 'refs/heads/main'
@@ -136,14 +115,14 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: org-rml/rml-bff-BFF_PROJECT-config
-          ref: production
+          ref: main
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
-      - name: Bump values-version.yaml — PRODUCTION (PRD)
+      - name: Bump values-version.yaml — MAIN
         run: |
           TAG=${{ needs.docker.outputs.image_tag }}
           sed -i "s|tag:.*|tag: \"${TAG}\"|" values-version.yaml
           git config user.email "ci@org-rml.com"
           git config user.name "CI Bot"
-          git commit -am "ci(production): bump image to ${TAG}"
+          git commit -am "ci(main): bump image to ${TAG}"
           git push
