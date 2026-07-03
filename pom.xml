@@ -19,7 +19,7 @@
         <java.version>21</java.version>
         <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
         <org.projectlombok.version>1.18.38</org.projectlombok.version>
-        <rml.common.version>1.0.0-SNAPSHOT</rml.common.version>
+        <rml.common.version>1.0.0</rml.common.version>
     </properties>
 
     <dependencies>
